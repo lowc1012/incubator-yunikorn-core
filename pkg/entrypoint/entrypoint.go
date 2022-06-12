@@ -19,6 +19,8 @@
 package entrypoint
 
 import (
+	"os"
+
 	"go.uber.org/zap"
 
 	"github.com/apache/yunikorn-core/pkg/events"
@@ -35,6 +37,7 @@ import (
 type startupOptions struct {
 	manualScheduleFlag bool
 	startWebAppFlag    bool
+	webAppRestPort     string
 	metricsHistorySize int
 	eventCacheEnabled  bool
 }
@@ -45,6 +48,7 @@ func StartAllServices() *ServiceContext {
 		startupOptions{
 			manualScheduleFlag: false,
 			startWebAppFlag:    true,
+			webAppRestPort:     "9080",
 			metricsHistorySize: 1440,
 			eventCacheEnabled:  false,
 		})
@@ -109,10 +113,14 @@ func startAllServicesWithParameters(opts startupOptions) *ServiceContext {
 		metricsCollector.StartService()
 	}
 
+	if port := os.Getenv("YK_REST_PORT"); port != "" {
+		opts.webAppRestPort = port
+	}
+
 	if opts.startWebAppFlag {
 		log.Logger().Info("ServiceContext start web application service")
 		webapp := webservice.NewWebApp(sched.GetClusterContext(), imHistory)
-		webapp.StartWebApp()
+		webapp.StartWebApp(opts.webAppRestPort)
 		context.WebApp = webapp
 	}
 
